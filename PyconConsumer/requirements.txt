@@ -1,0 +1,3 @@
+locust~=2.16.1
+confluent_kafka
+fastavro==1.4.7
