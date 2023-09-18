@@ -1,15 +1,16 @@
-from locust import HttpUser, task, constant, TaskSet
+from uuid import uuid4
+
+from confluent_kafka.serialization import StringSerializer
+from locust import HttpUser, task, constant, TaskSet, events
 import json
 from confluent_kafka import Producer, Consumer
-
-print("Hello, world!")
 
 
 class KafkaProducerUser(HttpUser):
 
     @task
     def produce(self):
-        print("Inside run for producer")
+        # print("Inside run for producer")
         message = json.dumps({
             "name": "John Doe",
             "age": 30,
@@ -22,46 +23,17 @@ class KafkaProducerUser(HttpUser):
             'security.protocol': 'plaintext'
         })
 
-        print("Printing message in Bytes::", message.__sizeof__())
-        producer.produce(topic="my-topic", key="key", value=message, callback=self.acked)
+        # print("Printing message in Bytes::", message.__sizeof__())
+        string_serializer = StringSerializer('utf_8')
+        producer.produce(topic="my-topic", key=string_serializer(str(uuid4())), value=message, callback=self.acked)
         producer.flush()
 
     def acked(self, error, msg):
         if error is not None:
             print("#Failed to deliver message: %s: %s" % (str(msg), str(self)))
         else:
-            print(msg.value())
-
-# class KafkaConsumerTask(locust.TaskSet):
-#
-#     def __init__(self, parent: "User"):
-#         print("Inside init for Consumer")
-#         super().__init__(parent)
-#         self.consumer = None
-#
-#     def on_start(self):
-#         print("Inside on_start for Consumer")
-#         self.consumer = Consumer({
-#             'bootstrap_servers': 'localhost:9092',
-#             'group_id': 'my-group',
-#         })
-
-#     def on_stop(self):
-#         self.consumer.close()
-#
-#     @task
-#     def run(self):
-#         print("Inside run for consumer")
-#         message = self.consumer.poll(timeout=1)
-#         if message:
-#             print(message.value)
-#
-#
-# class KafkaUser(locust.HttpUser):
-#     print("Inside producer")
-#     tasks = {KafkaProducerTask: 1}
-#
-#
-# class KafkaConsumerUser(locust.HttpUser):
-#     print("Inside consumer")
-#     tasks = {KafkaConsumerTask: 1}
+            # print("Printing message##", msg.value(), msg.latency())
+            events.request.fire(request_type="ENQUEUE",
+                                name="my-topic",
+                                response_time=msg.latency(),
+                                response_length=msg.__sizeof__())
