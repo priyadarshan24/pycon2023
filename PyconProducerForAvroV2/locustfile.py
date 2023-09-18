@@ -8,8 +8,6 @@ from confluent_kafka.serialization import StringSerializer
 # from confluent_kafka.serialization import StringSerializer, SerializationContext, MessageField
 from locust import HttpUser, task, constant, TaskSet, events
 
-print("Hello, world!")
-
 # Define your Avro schema
 avro_schema_str = """
 {
@@ -19,7 +17,9 @@ avro_schema_str = """
     {"name": "name", "type": "string"},
     {"name": "age", "type": "int"},
     {"name": "dob", "type": "string"},
-    {"name": "address", "type": "string"}
+    {"name": "address", "type": "string"},
+    {"name": "profile_summary", "type": "string"},
+    {"name": "profile_details", "type": "string"}
   ]
 }
 """
@@ -27,10 +27,22 @@ avro_schema_str = """
 # Create an AvroSchema object
 # avro_schema = avro.loads(avro_schema_str)
 avro_schema = avro.schema.parse(avro_schema_str)
-
 writer = avro.io.DatumWriter(avro_schema)
-bytes_writer = io.BytesIO()
-encoder = avro.io.BinaryEncoder(bytes_writer)
+
+producer = Producer({
+    'bootstrap.servers': 'localhost:9092',
+    'security.protocol': 'plaintext'
+})
+
+
+class Person:
+    def __init__(self, name, age, dob, address, profile_summary, profile_details):
+        self.name = name
+        self.age = age
+        self.dob = dob
+        self.address = address
+        self.profile_summary = profile_summary
+        self.profile_details = profile_details
 
 
 class KafkaProducerAvroUser(HttpUser):
@@ -40,25 +52,21 @@ class KafkaProducerAvroUser(HttpUser):
 
     @task
     def produce(self):
-        print("Inside run for producer for avro")
-        # Define an Avro message using your schema
-        avro_message = {
-            "name": "John Doe",
-            "age": 30,
-            "dob": "1990-01-01",
-            "address": "123 Main St"
-        }
 
-        producer = Producer({
-            'bootstrap.servers': 'localhost:9092',
-            'security.protocol': 'plaintext'
-        })
+        person = Person("John Doe", 30, "1990-01-01",
+                        "123 Main St,Main St,Main St,Main St,Main St,California, Bay Area, at MyHome",
+                        "I am enthusiastic Software Engineer",
+                        "I want to learn and implement the fundamental of software engineering with best of my knowledge so that I keep excelling in ho I build software systems")
+        avro_message = person.__dict__
 
         # Serialize the Avro data
+        bytes_writer = io.BytesIO()
+        encoder = avro.io.BinaryEncoder(bytes_writer)
         writer.write(avro_message, encoder)
         avro_bytes = bytes_writer.getvalue()
-        # print("Printing avroBytes", avro_bytes.__sizeof__())
+        # print("Printing avroBytes##", len(avro_bytes), avro_bytes)
         string_serializer = StringSerializer('utf_8')
+
         producer.produce('my-topic-avro', key=string_serializer(str(uuid4())), value=avro_bytes, callback=self.acked)
         producer.flush()
 
@@ -67,8 +75,9 @@ class KafkaProducerAvroUser(HttpUser):
             print("#Failed to deliver message: %s: %s" % (str(msg), str(self)))
         else:
             # print("AvroMessage", msg.value(), msg.latency())
+            # print("AvroMessage##", msg.value())
+            # print("MessageSize##", msg.__sizeof__())
             events.request.fire(request_type="ENQUEUE",
                                 name="my-topic-avro",
-                                response_time=msg.latency(),
-                                response_length=msg.__sizeof__())
-
+                                response_time=msg.latency() * 1000,
+                                response_length=len(msg.value()))
