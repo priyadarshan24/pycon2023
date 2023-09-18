@@ -67,7 +67,7 @@ class KafkaProducerAvroUser(HttpUser):
         # print("Printing avroBytes##", len(avro_bytes), avro_bytes)
         string_serializer = StringSerializer('utf_8')
 
-        producer.produce('my-topic-avro', key=string_serializer(str(uuid4())), value=avro_bytes, callback=self.acked)
+        producer.produce('my-topic-avro-v2', key=string_serializer(str(uuid4())), value=avro_bytes, callback=self.acked)
         producer.flush()
 
     def acked(self, error, msg):
@@ -78,6 +78,6 @@ class KafkaProducerAvroUser(HttpUser):
             # print("AvroMessage##", msg.value())
             # print("MessageSize##", msg.__sizeof__())
             events.request.fire(request_type="ENQUEUE",
-                                name="my-topic-avro",
+                                name="my-topic-avro-v2",
                                 response_time=msg.latency() * 1000,
                                 response_length=len(msg.value()))

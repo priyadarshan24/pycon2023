@@ -7,7 +7,7 @@ from confluent_kafka import Producer, Consumer
 
 
 class Person:
-    def __init__(self, name, age, dob, address, profile_summary,profile_details):
+    def __init__(self, name, age, dob, address, profile_summary, profile_details):
         self.name = name
         self.age = age
         self.dob = dob
@@ -20,7 +20,10 @@ class KafkaProducerUser(HttpUser):
 
     @task
     def produce(self):
-        person = Person("John Doe", 30, "1990-01-01", "123 Main St,Main St,Main St,Main St,Main St,California, Bay Area, at MyHome", "I am enthusiastic Software Engineer", "I want to learn and implement the fundamental of software engineering with best of my knowledge so that I keep excelling in ho I build software systems")
+        person = Person("John Doe", 30, "1990-01-01",
+                        "123 Main St,Main St,Main St,Main St,Main St,California, Bay Area, at MyHome",
+                        "I am enthusiastic Software Engineer",
+                        "I want to learn and implement the fundamental of software engineering with best of my knowledge so that I keep excelling in ho I build software systems")
         # print("Inside run for producer")
         # message = json.dumps({
         #     "name": "John Doe",
@@ -36,17 +39,17 @@ class KafkaProducerUser(HttpUser):
             'security.protocol': 'plaintext'
         })
 
-        print("Printing message in Bytes@@@@::", len(message))
+        # print("Printing message in Bytes@@@@::", len(message))
         string_serializer = StringSerializer('utf_8')
-        producer.produce(topic="my-topic", key=string_serializer(str(uuid4())), value=message, callback=self.acked)
+        producer.produce(topic="my-topic-v3", key=string_serializer(str(uuid4())), value=message, callback=self.acked)
         producer.flush()
 
     def acked(self, error, msg):
         if error is not None:
             print("#Failed to deliver message: %s: %s" % (str(msg), str(self)))
         else:
-            print("Printing message##@@", msg.value(), len(msg.value()))
+            # print("Printing message##@@", msg.value(), len(msg.value()))
             events.request.fire(request_type="ENQUEUE",
-                                name="my-topic",
-                                response_time=msg.latency()*1000,
+                                name="my-topic-v3",
+                                response_time=msg.latency() * 1000,
                                 response_length=len(msg.value()))
