@@ -7,7 +7,8 @@ from confluent_kafka import Producer, Consumer
 
 
 class Person:
-    def __init__(self, name, age, dob, address, profile_summary, profile_details):
+    def __init__(self, name, age, dob, address,
+                 profile_summary, profile_details):
         self.name = name
         self.age = age
         self.dob = dob
@@ -21,9 +22,12 @@ class KafkaProducerUser(HttpUser):
     @task
     def produce(self):
         person = Person("John Doe", 30, "1990-01-01",
-                        "123 Main St,Main St,Main St,Main St,Main St,California, Bay Area, at MyHome",
+                        "123 Main St,Main St,Main St,"
+                        "Main St,Main St,California, Bay Area, at MyHome",
                         "I am enthusiastic Software Engineer",
-                        "I want to learn and implement the fundamental of software engineering with best of my knowledge so that I keep excelling in ho I build software systems")
+                        "I want to learn and implement the fundamental "
+                        "of software engineering with best of my knowledge "
+                        "so that I keep excelling in how I build software systems")
         # print("Inside run for producer")
         # message = json.dumps({
         #     "name": "John Doe",
